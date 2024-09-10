@@ -1,0 +1,6 @@
+{
+  "targets": "minecraft:mace",
+  "components": {
+    "!minecraft:max_damage": {}
+  }
+}

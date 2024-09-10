@@ -1,0 +1,6 @@
+{
+  "targets": "minecraft:mace",
+  "components": {
+    "minecraft:fire_resistant": {}
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "item_components",
+  "version": "${version}",
+  "name": "Item Components",
+  "description": "Change the default components for items! Server-side and data-driven, refreshes on /reload! (and does it properly)",
+  "authors": [
+    "boyonk"
+  ],
+  "contact": {
+    "homepage": "https://modrinth.com/mod/item-components"
+  },
+  "license": "All-Rights-Reserved",
+  "icon": "assets/item_components/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.boyonk.itemcomponents.ItemComponents"
+    ]
+  },
+  "mixins": [
+    "item_components.mixins.json"
+  ],
+  "depends": {
+    "fabric-api": "*",
+    "fabricloader": ">=0.12.0",
+    "minecraft": ">=${minecraft_version}"
+  }
+}

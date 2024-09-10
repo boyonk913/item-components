@@ -1,0 +1,6 @@
+{
+  "targets": "minecraft:golden_chestplate",
+  "components": {
+    "minecraft:max_damage": 240
+  }
+}

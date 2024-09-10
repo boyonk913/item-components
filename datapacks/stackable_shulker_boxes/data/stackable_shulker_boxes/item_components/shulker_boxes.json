@@ -1,0 +1,6 @@
+{
+  "targets": "#minecraft:shulker_boxes",
+  "components": {
+    "minecraft:max_stack_size": 64
+  }
+}

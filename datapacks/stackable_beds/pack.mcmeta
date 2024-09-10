@@ -1,0 +1,7 @@
+{
+	"pack": {
+		"pack_format": 48,
+		"description": "Beds stack to 64",
+		"supported_formats": [48, 999]
+	}
+}

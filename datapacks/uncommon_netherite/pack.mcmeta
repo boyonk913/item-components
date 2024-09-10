@@ -1,0 +1,7 @@
+{
+	"pack": {
+		"pack_format": 48,
+		"description": "Netherite Equipment is uncommon, making their names yellow",
+		"supported_formats": [48, 999]
+	}
+}

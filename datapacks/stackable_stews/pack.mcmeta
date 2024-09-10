@@ -1,0 +1,7 @@
+{
+	"pack": {
+		"pack_format": 48,
+		"description": "Stews stack to 16",
+		"supported_formats": [48, 999]
+	}
+}

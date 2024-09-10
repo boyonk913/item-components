@@ -1,0 +1,7 @@
+{
+	"pack": {
+		"pack_format": 48,
+		"description": "Tools & Weapons share parity with Bedrock Edition, removing Attack Cooldowns",
+		"supported_formats": [48, 999]
+	}
+}

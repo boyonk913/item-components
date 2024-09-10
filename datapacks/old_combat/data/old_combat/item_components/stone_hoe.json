@@ -1,0 +1,21 @@
+{
+  "targets": "minecraft:stone_hoe",
+  "components": {
+    "minecraft:attribute_modifiers": [
+	  {
+	    "type": "minecraft:generic.attack_speed",
+		"id": "minecraft:base_attack_speed",
+		"amount": 96,
+		"operation": "add_value",
+		"slot": "mainhand"
+	  },
+	  {
+	    "type": "minecraft:generic.attack_damage",
+		"id": "minecraft:base_attack_damage",
+		"amount": 3,
+		"operation": "add_value",
+		"slot": "mainhand"
+	  }
+	]
+  }
+}

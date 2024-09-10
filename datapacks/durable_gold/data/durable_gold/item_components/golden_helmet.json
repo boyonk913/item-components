@@ -1,0 +1,6 @@
+{
+  "targets": "minecraft:golden_helmet",
+  "components": {
+    "minecraft:max_damage": 165
+  }
+}

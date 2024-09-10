@@ -1,0 +1,6 @@
+{
+  "targets": "minecraft:written_book",
+  "components": {
+    "minecraft:enchantment_glint_override": false
+  }
+}

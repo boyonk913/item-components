@@ -1,0 +1,6 @@
+{
+  "targets": "minecraft:golden_boots",
+  "components": {
+    "minecraft:max_damage": 195
+  }
+}

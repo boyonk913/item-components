@@ -1,0 +1,6 @@
+{
+  "targets": "minecraft:golden_leggings",
+  "components": {
+    "minecraft:max_damage": 105
+  }
+}

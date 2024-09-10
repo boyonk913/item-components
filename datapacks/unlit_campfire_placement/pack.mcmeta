@@ -1,0 +1,7 @@
+{
+	"pack": {
+		"pack_format": 48,
+		"description": "Campfires are unlit when placed",
+		"supported_formats": [48, 999]
+	}
+}

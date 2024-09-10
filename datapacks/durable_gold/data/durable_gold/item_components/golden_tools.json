@@ -1,0 +1,12 @@
+{
+  "targets": [
+    "minecraft:golden_sword",
+    "minecraft:golden_shovel",
+    "minecraft:golden_pickaxe",
+    "minecraft:golden_axe",
+	"minecraft:golden_hoe"
+  ],
+  "components": {
+    "minecraft:max_damage": 510
+  }
+}

@@ -1,0 +1,7 @@
+{
+	"pack": {
+		"pack_format": 48,
+		"description": "Maces don't burn up in fire or lava",
+		"supported_formats": [48, 999]
+	}
+}

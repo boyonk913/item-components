@@ -1,0 +1,12 @@
+{
+  "targets": [
+    "minecraft:campfire",
+	"minecraft:soul_campfire",
+    "#c:campfires"
+  ],
+  "components": {
+    "minecraft:block_state": {
+		"lit": "false"
+	}
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "targets": "minecraft:sugar",
+  "components": {
+    "minecraft:food": {
+		"nutrition": 1,
+		"saturation": 0.1,
+		"eat_seconds": 0.8
+	}
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "targets": "#c:potions",
+  "components": {
+    "minecraft:max_stack_size": 16
+  }
+}
