@@ -1,7 +1,0 @@
-{
-	"pack": {
-		"pack_format": 48,
-		"description": "Maces are unbreakable",
-		"supported_formats": [48, 999]
-	}
-}
