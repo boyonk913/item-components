@@ -10,7 +10,7 @@ import com.mojang.serialization.JsonOps;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.component.ComponentChanges;
 import net.minecraft.component.ComponentMap;
-import net.minecraft.component.ComponentMapImpl;
+import net.minecraft.component.MergedComponentMap;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
@@ -52,6 +52,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 	private final Map<TagKey<Item>, List<UnmergedComponents>> tagComponents = new HashMap<>();
 	private final Map<Item, ComponentMap> itemMapCache = new HashMap<>();
 	private final Map<Item, ComponentChanges> itemChangesCache = new HashMap<>();
+	private boolean populated = false;
 
 	protected ItemComponentsManager() {
 	}
@@ -63,6 +64,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 		Map<Identifier, UnresolvedComponents> map = new HashMap<>();
 		this.loadIntoMap(manager, map);
 		new Resolver(map).resolve(this.itemComponents::put, this.tagComponents::put);
+		this.markPopulated();
 
 		ItemComponents.forEachStack(stack -> ((BaseComponentSetter) (Object) stack).itemcomponents$setBaseComponents(stack.getItem().getComponents()));
 
@@ -113,6 +115,11 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 		this.tagComponents.clear();
 		this.itemMapCache.clear();
 		this.itemChangesCache.clear();
+		this.populated = false;
+	}
+
+	protected void markPopulated() {
+		this.populated = true;
 	}
 
 	public void close() {
@@ -123,17 +130,21 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 
 
 	public final ComponentMap getMap(Item item, ComponentMap base) {
+		if (!this.populated) return base;
+
 		ComponentMap cached = this.itemMapCache.get(item);
 		if (cached != null) return cached;
 
 		ComponentChanges changes = this.getChanges(item);
 
-		ComponentMap result = ComponentMapImpl.create(base, changes);
+		ComponentMap result = MergedComponentMap.create(base, changes);
 		this.itemMapCache.put(item, result);
 		return result;
 	}
 
 	public final ComponentChanges getChanges(Item item) {
+		if (!this.populated) return ComponentChanges.EMPTY;
+
 		ComponentChanges cached = this.itemChangesCache.get(item);
 		if (cached != null) return cached;
 
@@ -237,7 +248,6 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 	record UnmergedComponents(Identifier resourceId, int priority, List<ComponentChanges> components) {
 
 	}
-
 
 
 }

@@ -7,9 +7,9 @@
     "defaultRequire": 1
   },
   "mixins": [
-    "ComponentMapImplMixin",
     "ItemMixin",
     "ItemStack_PacketCodecMixin",
-    "ItemStackMixin"
+    "ItemStackMixin",
+    "MergedComponentMapMixin"
   ]
 }

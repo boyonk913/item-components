@@ -3,8 +3,10 @@
   "components": {
     "minecraft:food": {
 		"nutrition": 1,
-		"saturation": 0.1,
-		"eat_seconds": 0.8
-	}
+		"saturation": 0.1
+	},
+    "minecraft:consumable": {
+      "consume_seconds": 0.8
+    }
   }
 }

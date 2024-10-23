@@ -4,7 +4,7 @@ import com.boyonk.itemcomponents.BaseComponentSetter;
 import com.boyonk.itemcomponents.ItemComponents;
 import com.boyonk.itemcomponents.OwoHack;
 import net.minecraft.component.ComponentMap;
-import net.minecraft.component.ComponentMapImpl;
+import net.minecraft.component.MergedComponentMap;
 import net.minecraft.item.ItemConvertible;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Final;
@@ -22,10 +22,10 @@ public abstract class ItemStackMixin implements BaseComponentSetter {
 
 	@Shadow
 	@Final
-	ComponentMapImpl components;
+	MergedComponentMap components;
 
-	@Inject(method = "<init>(Lnet/minecraft/item/ItemConvertible;ILnet/minecraft/component/ComponentMapImpl;)V", at = @At("RETURN"))
-	void itemcomponents$storeStack(ItemConvertible item, int count, ComponentMapImpl components, CallbackInfo ci) {
+	@Inject(method = "<init>(Lnet/minecraft/item/ItemConvertible;ILnet/minecraft/component/MergedComponentMap;)V", at = @At("RETURN"))
+	void itemcomponents$storeStack(ItemConvertible item, int count, MergedComponentMap components, CallbackInfo ci) {
 		ItemComponents.store((ItemStack) (Object) this);
 	}
 

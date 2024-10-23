@@ -1,6 +1,8 @@
 {
   "targets": "minecraft:mace",
   "components": {
-    "minecraft:fire_resistant": {}
+    "minecraft:damage_resistant": {
+      "types": "#minecraft:is_fire"
+    }
   }
 }
