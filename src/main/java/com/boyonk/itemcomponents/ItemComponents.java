@@ -3,6 +3,7 @@ package com.boyonk.itemcomponents;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.item.ItemStack;
 import net.minecraft.resource.ResourceType;
 import org.slf4j.Logger;
@@ -20,13 +21,16 @@ public class ItemComponents implements ModInitializer {
 
 	public static final ItemComponentsManager MANAGER = new ItemComponentsManager();
 
-
 	private static final Set<ItemStack> WEAK_STACKS = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+
+	private static boolean owoHack = false;
 
 	@Override
 	public void onInitialize() {
 		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(MANAGER);
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> MANAGER.close());
+
+		if (FabricLoader.getInstance().isModLoaded("owo")) owoHack = true;
 	}
 
 	public static void store(ItemStack stack) {
@@ -38,5 +42,10 @@ public class ItemComponents implements ModInitializer {
 			WEAK_STACKS.forEach(action);
 		}
 	}
+
+	public static boolean applyOwoHack() {
+		return owoHack;
+	}
+
 
 }
