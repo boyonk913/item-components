@@ -7,11 +7,14 @@ import com.google.gson.JsonSyntaxException;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
+import net.fabricmc.fabric.api.event.lifecycle.v1.CommonLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.component.ComponentChanges;
 import net.minecraft.component.ComponentMap;
 import net.minecraft.component.MergedComponentMap;
 import net.minecraft.item.Item;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
@@ -31,7 +34,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-public class ItemComponentsManager implements SimpleSynchronousResourceReloadListener {
+public class ItemComponentsManager implements SimpleSynchronousResourceReloadListener, CommonLifecycleEvents.TagsLoaded {
 
 	public static final Logger LOGGER = ItemComponents.LOGGER;
 	public static final Identifier ID = Identifier.of(ItemComponents.NAMESPACE, "item_components");
@@ -48,6 +51,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 			);
 	private static final Codec<List<Identifier>> PARENTS_CODEC = Identifier.CODEC.listOf();
 
+	private final Map<Identifier, UnresolvedComponents> pendingChanges = new HashMap<>();
 	private final Map<RegistryEntry<Item>, List<UnmergedComponents>> itemComponents = new HashMap<>();
 	private final Map<TagKey<Item>, List<UnmergedComponents>> tagComponents = new HashMap<>();
 	private final Map<Item, ComponentMap> itemMapCache = new HashMap<>();
@@ -61,14 +65,9 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 	public void reload(ResourceManager manager) {
 		this.clear();
 
-		Map<Identifier, UnresolvedComponents> map = new HashMap<>();
-		this.loadIntoMap(manager, map);
-		new Resolver(map).resolve(this.itemComponents::put, this.tagComponents::put);
-		this.markPopulated();
+		this.loadIntoMap(manager, pendingChanges);
 
-		ItemComponents.forEachStack(stack -> ((BaseComponentSetter) (Object) stack).itemcomponents$setBaseComponents(stack.getItem().getComponents()));
-
-		LOGGER.info("Loaded {} component changes", map.size());
+		LOGGER.info("Loaded {} component changes", pendingChanges.size());
 	}
 
 	private void loadIntoMap(ResourceManager manager, Map<Identifier, UnresolvedComponents> map) {
@@ -111,6 +110,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 
 
 	protected void clear() {
+		this.pendingChanges.clear();
 		this.itemComponents.clear();
 		this.tagComponents.clear();
 		this.itemMapCache.clear();
@@ -174,6 +174,20 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 	@Override
 	public Identifier getFabricId() {
 		return ID;
+	}
+
+	@Override
+	public void onTagsLoaded(DynamicRegistryManager registries, boolean client) {
+		if(client) {
+			return;
+		}
+
+		new Resolver(this.pendingChanges).resolve(this.itemComponents::put, this.tagComponents::put);
+		this.markPopulated();
+
+		ItemComponents.forEachStack(stack -> ((BaseComponentSetter) (Object) stack).itemcomponents$setBaseComponents(stack.getItem().getComponents()));
+
+		LOGGER.info("Resolved component changes for {} item(s) and {} tag(s)", itemComponents.size(), tagComponents.size());
 	}
 
 	private static class Resolver {
