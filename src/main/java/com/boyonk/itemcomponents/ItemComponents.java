@@ -1,6 +1,7 @@
 package com.boyonk.itemcomponents;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.CommonLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.loader.api.FabricLoader;
@@ -28,6 +29,7 @@ public class ItemComponents implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(MANAGER);
+		CommonLifecycleEvents.TAGS_LOADED.register((registries, client) -> { if (!client) MANAGER.resolve(); });
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> MANAGER.close());
 
 		if (FabricLoader.getInstance().isModLoaded("owo")) owoHack = true;

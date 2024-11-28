@@ -50,9 +50,12 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 
 	private final Map<RegistryEntry<Item>, List<UnmergedComponents>> itemComponents = new HashMap<>();
 	private final Map<TagKey<Item>, List<UnmergedComponents>> tagComponents = new HashMap<>();
+
 	private final Map<Item, ComponentMap> itemMapCache = new HashMap<>();
 	private final Map<Item, ComponentChanges> itemChangesCache = new HashMap<>();
-	private boolean populated = false;
+
+	private final Map<Identifier, UnresolvedComponents> unresolved = new HashMap<>();
+	private boolean resolved = false;
 
 	protected ItemComponentsManager() {
 	}
@@ -61,14 +64,18 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 	public void reload(ResourceManager manager) {
 		this.clear();
 
-		Map<Identifier, UnresolvedComponents> map = new HashMap<>();
-		this.loadIntoMap(manager, map);
-		new Resolver(map).resolve(this.itemComponents::put, this.tagComponents::put);
-		this.markPopulated();
+		this.loadIntoMap(manager, this.unresolved);
+
+		LOGGER.info("Loaded {} component changes", this.unresolved.size());
+	}
+
+	public void resolve() {
+		new Resolver(this.unresolved).resolve(this.itemComponents::put, this.tagComponents::put);
+		this.markResolved();
 
 		ItemComponents.forEachStack(stack -> ((BaseComponentSetter) (Object) stack).itemcomponents$setBaseComponents(stack.getItem().getComponents()));
 
-		LOGGER.info("Loaded {} component changes", map.size());
+		LOGGER.info("Resolved component changes for {} item(s) and {} tag(s)", this.itemComponents.size(), this.tagComponents.size());
 	}
 
 	private void loadIntoMap(ResourceManager manager, Map<Identifier, UnresolvedComponents> map) {
@@ -111,15 +118,17 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 
 
 	protected void clear() {
+		this.unresolved.clear();
 		this.itemComponents.clear();
 		this.tagComponents.clear();
 		this.itemMapCache.clear();
 		this.itemChangesCache.clear();
-		this.populated = false;
+		this.resolved = false;
 	}
 
-	protected void markPopulated() {
-		this.populated = true;
+	protected void markResolved() {
+		this.unresolved.clear();
+		this.resolved = true;
 	}
 
 	public void close() {
@@ -130,7 +139,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 
 
 	public final ComponentMap getMap(Item item, ComponentMap base) {
-		if (!this.populated) return base;
+		if (!this.resolved) return base;
 
 		ComponentMap cached = this.itemMapCache.get(item);
 		if (cached != null) return cached;
@@ -143,7 +152,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 	}
 
 	public final ComponentChanges getChanges(Item item) {
-		if (!this.populated) return ComponentChanges.EMPTY;
+		if (!this.resolved) return ComponentChanges.EMPTY;
 
 		ComponentChanges cached = this.itemChangesCache.get(item);
 		if (cached != null) return cached;
@@ -175,6 +184,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 	public Identifier getFabricId() {
 		return ID;
 	}
+
 
 	private static class Resolver {
 		private final Map<Identifier, UnresolvedComponents> unresolved;
