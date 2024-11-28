@@ -14,6 +14,8 @@ import net.minecraft.component.MergedComponentMap;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.RegistryOps;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.TagKey;
 import net.minecraft.resource.Resource;
@@ -22,6 +24,8 @@ import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.JsonHelper;
 import net.minecraft.util.dynamic.Codecs;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.BufferedReader;
@@ -54,8 +58,11 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 	private final Map<Item, ComponentMap> itemMapCache = new HashMap<>();
 	private final Map<Item, ComponentChanges> itemChangesCache = new HashMap<>();
 
+	@Nullable
+	private RegistryWrapper.WrapperLookup registries;
 	private final Map<Identifier, UnresolvedComponents> unresolved = new HashMap<>();
 	private boolean resolved = false;
+
 
 	protected ItemComponentsManager() {
 	}
@@ -81,6 +88,9 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 	private void loadIntoMap(ResourceManager manager, Map<Identifier, UnresolvedComponents> map) {
 		ResourceFinder finder = ResourceFinder.json(ItemComponentsManager.DIRECTORY);
 
+		assert this.registries != null;
+		RegistryOps<JsonElement> ops = RegistryOps.of(JsonOps.INSTANCE, this.registries);
+
 		for (Map.Entry<Identifier, Resource> entry : finder.findResources(manager).entrySet()) {
 			Identifier resourcePath = entry.getKey();
 			Resource resource = entry.getValue();
@@ -100,13 +110,13 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 
 				priority = JsonHelper.getInt(object, "priority", 0);
 				if (object.has("parents")) {
-					parents = PARENTS_CODEC.decode(JsonOps.INSTANCE, JsonHelper.getElement(object, "parents")).getOrThrow(JsonSyntaxException::new).getFirst();
+					parents = PARENTS_CODEC.decode(ops, JsonHelper.getElement(object, "parents")).getOrThrow(JsonSyntaxException::new).getFirst();
 				}
 				if (object.has("targets")) {
-					targets = TARGETS_CODEC.decode(JsonOps.INSTANCE, JsonHelper.getElement(object, "targets")).getOrThrow(JsonSyntaxException::new).getFirst();
+					targets = TARGETS_CODEC.decode(ops, JsonHelper.getElement(object, "targets")).getOrThrow(JsonSyntaxException::new).getFirst();
 				}
 				if (object.has("components")) {
-					changes = ComponentChanges.CODEC.decode(JsonOps.INSTANCE, JsonHelper.getObject(object, "components")).getOrThrow(JsonSyntaxException::new).getFirst();
+					changes = ComponentChanges.CODEC.decode(ops, JsonHelper.getObject(object, "components")).getOrThrow(JsonSyntaxException::new).getFirst();
 				}
 
 				map.put(resourceId, new UnresolvedComponents(resourceId, priority, targets, parents, changes));
@@ -118,6 +128,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 
 
 	protected void clear() {
+		this.registries = null;
 		this.unresolved.clear();
 		this.itemComponents.clear();
 		this.tagComponents.clear();
@@ -127,6 +138,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 	}
 
 	protected void markResolved() {
+		this.registries = null;
 		this.unresolved.clear();
 		this.resolved = true;
 	}
@@ -179,12 +191,14 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 		return result;
 	}
 
+	public void setRegistries(@NotNull RegistryWrapper.WrapperLookup registries) {
+		this.registries = registries;
+	}
 
 	@Override
 	public Identifier getFabricId() {
 		return ID;
 	}
-
 
 	private static class Resolver {
 		private final Map<Identifier, UnresolvedComponents> unresolved;

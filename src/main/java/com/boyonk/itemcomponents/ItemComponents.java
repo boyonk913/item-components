@@ -28,8 +28,13 @@ public class ItemComponents implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(MANAGER);
-		CommonLifecycleEvents.TAGS_LOADED.register((registries, client) -> { if (!client) MANAGER.resolve(); });
+		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(MANAGER.getFabricId(), (registries) -> {
+			MANAGER.setRegistries(registries);
+			return MANAGER;
+		});
+		CommonLifecycleEvents.TAGS_LOADED.register((registries, client) -> {
+			if (!client) MANAGER.resolve();
+		});
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> MANAGER.close());
 
 		if (FabricLoader.getInstance().isModLoaded("owo")) owoHack = true;
