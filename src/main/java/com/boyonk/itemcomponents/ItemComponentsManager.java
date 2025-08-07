@@ -7,6 +7,7 @@ import com.google.gson.JsonSyntaxException;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.component.ComponentChanges;
 import net.minecraft.component.ComponentMap;
@@ -272,6 +273,68 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 
 	}
 
+	public record ItemComponentsEntry(int priority, List<Codecs.TagEntryId> targets, List<Identifier> parents, ComponentChanges components) {
+		public static Codec<ItemComponentsEntry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+				Codec.INT.optionalFieldOf("priority", 0).forGetter(ItemComponentsEntry::priority),
+				TARGETS_CODEC.optionalFieldOf("targets", Collections.emptyList()).forGetter(ItemComponentsEntry::targets),
+				PARENTS_CODEC.optionalFieldOf("parents", Collections.emptyList()).forGetter(ItemComponentsEntry::parents),
+				ComponentChanges.CODEC.optionalFieldOf("components", ComponentChanges.EMPTY).forGetter(ItemComponentsEntry::components)
+		).apply(instance, ItemComponentsEntry::new));
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static class Builder {
+			private int priority = 0;
+			private final List<Codecs.TagEntryId> targets = new ArrayList<>();
+			private final List<Identifier> parents = new ArrayList<>();
+			private ComponentChanges components = ComponentChanges.EMPTY;
+
+			public Builder() {
+
+			}
+
+			public Builder priority(int priority) {
+				this.priority = priority;
+				return this;
+			}
+
+			public Builder target(Identifier id, boolean tag) {
+				targets.add(new Codecs.TagEntryId(id, tag));
+				return this;
+			}
+
+			public Builder item(Item item) {
+				Identifier id = Registries.ITEM.getId(item);
+				return target(id, false);
+			}
+			public Builder tag(TagKey<?> tagKey) {
+				Identifier id = tagKey.id();
+				return target(id, true);
+			}
+
+			public Builder parent(Identifier identifier) {
+				this.parents.add(identifier);
+				return this;
+			}
+
+			public Builder parents(List<Identifier> identifiers) {
+				this.parents.addAll(identifiers);
+				return this;
+			}
+
+			// Can use the ComponentChanges.Builder class to construct this object
+			public Builder components(ComponentChanges componentChanges) {
+				this.components = componentChanges;
+				return this;
+			}
+
+			public ItemComponentsEntry build() {
+				return new ItemComponentsEntry(priority, targets, parents, components);
+			}
+		}
+	}
 
 }
 
