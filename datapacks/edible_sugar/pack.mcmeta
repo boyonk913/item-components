@@ -2,6 +2,8 @@
 	"pack": {
 		"pack_format": 48,
 		"description": "Sugar is an edible snack that gives 1 nutrition & 0.1 saturation",
-		"supported_formats": [48, 999]
+		"supported_formats": [48, 999],
+		"min_format": 48,
+		"max_format": 999
 	}
 }

@@ -3,6 +3,7 @@ package com.boyonk.itemcomponents.mixin;
 import com.boyonk.itemcomponents.BaseComponentSetter;
 import com.boyonk.itemcomponents.ItemComponents;
 import com.boyonk.itemcomponents.OwoHack;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.minecraft.component.ComponentMap;
 import net.minecraft.component.MergedComponentMap;
 import net.minecraft.item.ItemConvertible;
@@ -48,5 +49,12 @@ public abstract class ItemStackMixin implements BaseComponentSetter {
 			throw new RuntimeException(e);
 		}
 	}
+
+	@ModifyReturnValue(method = "getComponents", at = @At("RETURN"))
+	public ComponentMap itemcomponents$getComponents(ComponentMap original) {
+		return ItemComponents.MANAGER.getMap((ItemStack) (Object) this, original);
+	}
+
+
 
 }

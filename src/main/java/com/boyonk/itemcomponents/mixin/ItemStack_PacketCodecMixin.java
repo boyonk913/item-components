@@ -13,7 +13,7 @@ public class ItemStack_PacketCodecMixin {
 
 	@ModifyExpressionValue(method = "encode(Lnet/minecraft/network/RegistryByteBuf;Lnet/minecraft/item/ItemStack;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/component/MergedComponentMap;getChanges()Lnet/minecraft/component/ComponentChanges;"))
 	ComponentChanges defaultitemcomponents$sendExtraChanges(ComponentChanges original, @Local(argsOnly = true) ItemStack stack) {
-		ComponentChanges base = ItemComponents.MANAGER.getChanges(stack.getItem());
+		ComponentChanges base = ItemComponents.MANAGER.getChanges(stack);
 		if (base.isEmpty()) return original;
 		if (original.isEmpty()) return base;
 

@@ -12,6 +12,8 @@ import net.minecraft.component.ComponentChanges;
 import net.minecraft.component.ComponentMap;
 import net.minecraft.component.MergedComponentMap;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.predicate.item.ItemPredicate;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.RegistryOps;
@@ -52,11 +54,17 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 			);
 	private static final Codec<List<Identifier>> PARENTS_CODEC = Identifier.CODEC.listOf();
 
+	/**
+	 * Holds the item stack currently being evaluated, so that we do not
+	 * infinitely recurse while evaluating conditionals changes.
+	 */
+	private static ThreadLocal<ItemStack> currentItemStack = new ThreadLocal<>();
+
 	private final Map<RegistryEntry<Item>, List<UnmergedComponents>> itemComponents = new HashMap<>();
 	private final Map<TagKey<Item>, List<UnmergedComponents>> tagComponents = new HashMap<>();
 
 	private final Map<Item, ComponentMap> itemMapCache = new HashMap<>();
-	private final Map<Item, ComponentChanges> itemChangesCache = new HashMap<>();
+	private final Map<Item, ChangeSet> itemChangesCache = new HashMap<>();
 
 	@Nullable
 	private RegistryWrapper.WrapperLookup registries;
@@ -102,6 +110,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 				int priority;
 				List<Identifier> parents = List.of();
 				List<Codecs.TagEntryId> targets = List.of();
+				ItemPredicate predicate = null;
 				ComponentChanges changes = ComponentChanges.EMPTY;
 
 				JsonElement json = JsonParser.parseReader(reader);
@@ -115,11 +124,14 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 				if (object.has("targets")) {
 					targets = TARGETS_CODEC.decode(ops, JsonHelper.getElement(object, "targets")).getOrThrow(JsonSyntaxException::new).getFirst();
 				}
+				if (object.has("predicate")) {
+					predicate = ItemPredicate.CODEC.decode(ops, JsonHelper.getElement(object, "predicate")).getOrThrow(JsonSyntaxException::new).getFirst();
+				}
 				if (object.has("components")) {
 					changes = ComponentChanges.CODEC.decode(ops, JsonHelper.getObject(object, "components")).getOrThrow(JsonSyntaxException::new).getFirst();
 				}
 
-				map.put(resourceId, new UnresolvedComponents(resourceId, priority, targets, parents, changes));
+				map.put(resourceId, new UnresolvedComponents(resourceId, priority, targets, parents, predicate, changes));
 			} catch (Exception exception) {
 				LOGGER.error("Couldn't read components {} from {} in data pack {}", resourceId, resourcePath, resource.getPackId(), exception);
 			}
@@ -148,6 +160,13 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 		ItemComponents.forEachStack(stack -> ((BaseComponentSetter) (Object) stack).itemcomponents$setBaseComponents(stack.getItem().getComponents()));
 	}
 
+	public final ComponentMap getMap(ItemStack stack, ComponentMap base) {
+		if (!this.resolved) return base;
+
+		ComponentChanges changes = this.getChanges(stack);
+
+		return MergedComponentMap.create(base, changes);
+	}
 
 	public final ComponentMap getMap(Item item, ComponentMap base) {
 		if (!this.resolved) return base;
@@ -162,32 +181,71 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 		return result;
 	}
 
-	public final ComponentChanges getChanges(Item item) {
-		if (!this.resolved) return ComponentChanges.EMPTY;
+	public final ComponentChanges getChanges(ItemStack stack) {
+		ChangeSet changeSet = getChangeSet(stack.getItem());
 
-		ComponentChanges cached = this.itemChangesCache.get(item);
+		// Conditional changes can't be cached, so avoid evaluating them if at all possible
+		if(changeSet.conditionalChanges.isEmpty()) {
+			return changeSet.unconditionalChanges;
+		}
+
+		if(currentItemStack.get() == stack) {
+			return changeSet.unconditionalChanges;
+		}
+
+		// protect against recursion while evaluating predicates
+		currentItemStack.set(stack);
+		ComponentChanges.Builder builder = ComponentChanges.builder();
+		addAllToBuilder(builder, Stream.concat(
+						Stream.of(changeSet.unconditionalChanges),
+						changeSet.conditionalChanges.stream().filter(conditional -> conditional.predicate.test(stack)).map(ConditionalComponentChanges::changes))
+				.toList());
+		currentItemStack.set(null);
+
+		ComponentChanges changes = builder.build();
+		return changes;
+	}
+
+	public final ComponentChanges getChanges(Item item) {
+		return getChangeSet(item).unconditionalChanges;
+	}
+
+	public final ChangeSet getChangeSet(Item item) {
+		if (!this.resolved) return ChangeSet.EMPTY;
+
+		ChangeSet cached = this.itemChangesCache.get(item);
 		if (cached != null) return cached;
 
 		RegistryEntry<Item> entry = Registries.ITEM.getEntry(item);
 
-		ComponentChanges.Builder builder = ComponentChanges.builder();
+		ComponentChanges.Builder unconditionalBuilder = ComponentChanges.builder();
+		List<ConditionalComponentChanges> conditionalChanges = new ArrayList<>();
 
 		Stream.concat(
 						this.itemComponents.getOrDefault(entry, List.of()).stream(),
 						entry.streamTags().map(tag -> this.tagComponents.getOrDefault(tag, List.of())).flatMap(Collection::stream)
 				).sorted(Comparator.comparingInt(UnmergedComponents::priority))
-				.map(UnmergedComponents::components)
-				.flatMap(Collection::stream)
-				.forEachOrdered(changes -> {
-					ComponentChanges.AddedRemovedPair pair = changes.toAddedRemovedPair();
-					pair.added().forEach(builder::add);
-					pair.removed().forEach(builder::remove);
-
-				});
-
-		ComponentChanges result = builder.build();
+				.forEachOrdered(unmerged -> {
+						if (unmerged.predicate == null) {
+							// No predicate; add to unconditional changes
+							addAllToBuilder(unconditionalBuilder, unmerged.components);
+						} else {
+							ComponentChanges.Builder conditionalBuilder = ComponentChanges.builder();
+							addAllToBuilder(conditionalBuilder, unmerged.components);
+							conditionalChanges.add(new ConditionalComponentChanges(unmerged.predicate, conditionalBuilder.build()));
+						}
+					});
+		ChangeSet result = new ChangeSet(unconditionalBuilder.build(), conditionalChanges);
 		this.itemChangesCache.put(item, result);
 		return result;
+	}
+
+	private static void addAllToBuilder(ComponentChanges.Builder builder, List<ComponentChanges> changesList) {
+		changesList.forEach(changes -> {
+			ComponentChanges.AddedRemovedPair pair = changes.toAddedRemovedPair();
+			pair.added().forEach(builder::add);
+			pair.removed().forEach(builder::remove);
+		});
 	}
 
 	public void setRegistries(@NotNull RegistryWrapper.WrapperLookup registries) {
@@ -255,7 +313,7 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 				}
 			}
 			components.add(unresolved.components());
-			UnmergedComponents resolved = new UnmergedComponents(unresolved.resourceId(), unresolved.priority(), components);
+			UnmergedComponents resolved = new UnmergedComponents(unresolved.resourceId(), unresolved.priority(), unresolved.predicate(), components);
 
 			this.resolved.put(id, resolved);
 			this.toResolve.remove(id);
@@ -265,13 +323,17 @@ public class ItemComponentsManager implements SimpleSynchronousResourceReloadLis
 
 	}
 
-	record UnresolvedComponents(Identifier resourceId, int priority, List<Codecs.TagEntryId> targets, List<Identifier> parents, ComponentChanges components) {
+	record UnresolvedComponents(Identifier resourceId, int priority, List<Codecs.TagEntryId> targets, List<Identifier> parents, ItemPredicate predicate, ComponentChanges components) {
 	}
 
-	record UnmergedComponents(Identifier resourceId, int priority, List<ComponentChanges> components) {
-
+	record UnmergedComponents(Identifier resourceId, int priority, ItemPredicate predicate, List<ComponentChanges> components) {
 	}
 
+	record ChangeSet(ComponentChanges unconditionalChanges, List<ConditionalComponentChanges> conditionalChanges) {
+		public static final ChangeSet EMPTY = new ChangeSet(ComponentChanges.EMPTY, List.of());
+	}
 
+	record ConditionalComponentChanges(ItemPredicate predicate, ComponentChanges changes) {
+	}
 }
 

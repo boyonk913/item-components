@@ -1,5 +1,14 @@
 {
   "targets": "#minecraft:shulker_boxes",
+  "predicate": {
+    "predicates": {
+      "minecraft:container": {
+        "items": {
+          "size": 0
+        }
+      }
+    }
+  },
   "components": {
     "minecraft:max_stack_size": 64
   }
